@@ -11,31 +11,19 @@ import AVFoundation
 import Photos
 import PhotosUI
 
-// MARK: - AttachmentHandler object class
-/// this class creates a reusable imagePicker controller object
-class AttachmentHandler: NSObject
-{
-    // MARK: - Global File Variables
+/// This class creates a reusable imagePicker controller object
+class AttachmentHandler: NSObject {
+    
     static let shared = AttachmentHandler()
     fileprivate weak var currentVC: UIViewController?
     
-    /// internal properties
     var retrievedImage: ((UIImage) -> Void)?
     
-    /// attachmentType variables
-    fileprivate enum AttachmentType: String {
+    private enum AttachmentType: String {
         case camera, video, photoLibrary
     }
     
-
-    
-    
-    
-    
-    // MARK: - UIImagePicker Alert Functions
-    /// this function shows the actionSheet for the image and camera
-    func showAttachmentActionSheet(vc: UIViewController, onDeleteImagePushed: (() -> ())? = nil)
-    {
+    func showAttachmentActionSheet(vc: UIViewController, onDeleteImagePushed: (() -> ())? = nil) {
         currentVC = vc
         let alertActionSheet = UIAlertController(title: Language.current.imagePickerAlertTitle, message: Language.current.imagePickerAlertMessage, preferredStyle: .actionSheet)
         
@@ -59,11 +47,8 @@ class AttachmentHandler: NSObject
         vc.present(alertActionSheet, animated: true, completion: nil)
     }
     
-    /// this function creates the popOverController for the ipad
-    fileprivate func createPopOverControllerForIpadWith(actionSheet: UIAlertController)
-    {
-        if let popOverController = actionSheet.popoverPresentationController
-        {
+    private func createPopOverControllerForIpadWith(actionSheet: UIAlertController) {
+        if let popOverController = actionSheet.popoverPresentationController {
             guard let currentVC = currentVC else { return }
             let popOverView = CGRect(x: currentVC.view.bounds.midX, y: currentVC.view.bounds.midY, width: 0, height: 0)
             popOverController.permittedArrowDirections = []
@@ -72,35 +57,19 @@ class AttachmentHandler: NSObject
         }
     }
     
-    
-    
-    
-    
-    
-    // MARK: - Authorization functions
-    /// this checks the autorization status of the photo library acces and handles the case accordingly
-    fileprivate func autorisationStatusCamera(attachmentTypeEnum: AttachmentType)
-    {
+    private func autorisationStatusCamera(attachmentTypeEnum: AttachmentType) {
         let authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
         
-        switch authorizationStatus
-        {
-        case .authorized:
-            handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
-        case .notDetermined:
-            handleNotDetermined(attachmentTypeEnum: attachmentTypeEnum)
-        case .restricted:
-            handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
-        case .denied:
-            handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
-        @unknown default:
-            break
+        switch authorizationStatus {
+        case .authorized: handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
+        case .notDetermined: handleNotDetermined(attachmentTypeEnum: attachmentTypeEnum)
+        case .restricted: handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
+        case .denied: handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
+        @unknown default: break
         }
     }
     
-    /// this checks the autorization status of the photo library acces and handles the case accordingly
-    fileprivate func autorisationStatusPhotoLibrary(attachmentTypeEnum: AttachmentType)
-    {
+    private func autorisationStatusPhotoLibrary(attachmentTypeEnum: AttachmentType) {
         if #available(iOS 14.0, *) {
             handleAutorisationIOS14()
         } else {
@@ -108,9 +77,7 @@ class AttachmentHandler: NSObject
         }
     }
     
-    /// this function handles the autorization status for iOS 14 and higher
-    fileprivate func handleAutorisationIOS14()
-    {
+    private func handleAutorisationIOS14() {
         if #available(iOS 14.0, *) {
             guard let currentVC = currentVC else { return }
 
@@ -124,69 +91,55 @@ class AttachmentHandler: NSObject
         }
     }
     
-    /// this function handles the autorization status for iOS 13
-    fileprivate func handleAutorisationIOS13(attachmentTypeEnum: AttachmentType)
-    {
+    private func handleAutorisationIOS13(attachmentTypeEnum: AttachmentType) {
         let authorizationStatus = PHPhotoLibrary.authorizationStatus()
         
-        switch authorizationStatus
-        {
-        case .authorized:
-            handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
-        case .notDetermined:
-            handleNotDetermined(attachmentTypeEnum: attachmentTypeEnum)
-        case .restricted:
-            handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
-        case .denied:
-            handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
-        case .limited:
-            handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
-        @unknown default:
-            handleNotDetermined(attachmentTypeEnum: attachmentTypeEnum)
+        switch authorizationStatus {
+        case .authorized: handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
+        case .notDetermined: handleNotDetermined(attachmentTypeEnum: attachmentTypeEnum)
+        case .restricted: handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
+        case .denied: handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
+        case .limited: handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
+        @unknown default: handleNotDetermined(attachmentTypeEnum: attachmentTypeEnum)
         }
     }
     
-    /// this function handles the authorizationStatus authorized
-    fileprivate func handleAuthorized(attachmentTypeEnum: AttachmentType)
-    {
+    private func handleAuthorized(attachmentTypeEnum: AttachmentType) {
         if attachmentTypeEnum == .camera {
             openCamera()
-        }
-        if attachmentTypeEnum == .photoLibrary {
+        } else if attachmentTypeEnum == .photoLibrary {
             openPhotoLibrary()
         }
     }
     
-    /// this function handles the authorizationStatus notDetermined
-    fileprivate func handleNotDetermined(attachmentTypeEnum: AttachmentType)
-    {
+    private func handleNotDetermined(attachmentTypeEnum: AttachmentType) {
         if attachmentTypeEnum == .camera {
-            AVCaptureDevice.requestAccess(for: .video) { success in
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] success in
+                guard let self else { return }
                 if success {
-                    self.handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
+                    handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
                 } else {
-                    self.handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
+                    handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
                 }
             }
         } else if attachmentTypeEnum == .photoLibrary {
-            PHPhotoLibrary.requestAuthorization({ (status) in
+            PHPhotoLibrary.requestAuthorization { [weak self] status in
+                guard let self else { return }
                 if status ==  PHAuthorizationStatus.authorized {
-                    self.handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
+                    handleAuthorized(attachmentTypeEnum: attachmentTypeEnum)
                 } else {
-                    self.handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
+                    handleRestrictedOrDenied(attachmentTypeEnum: attachmentTypeEnum)
                 }
-            })
+            }
         }
     }
     
-    /// this function handles the authorizationStatus restricted or denied
-    fileprivate func handleRestrictedOrDenied(attachmentTypeEnum: AttachmentType)
-    {
+    private func handleRestrictedOrDenied(attachmentTypeEnum: AttachmentType) {
         guard let currentVC = currentVC else { return }
         
         let alert = UIAlertController(title: Language.current.imagePickerErrorAlertTitle, message: Language.current.imagePickerErrorAlertMessage, preferredStyle: .alert)
         let cancelAction = UIAlertAction(title: Language.current.alertCancelText, style: .cancel)
-        let gotoSettingsAction = UIAlertAction(title: Language.current.imagePickerAlertActionGoToSettings, style: .default) { (action) in
+        let gotoSettingsAction = UIAlertAction(title: Language.current.imagePickerAlertActionGoToSettings, style: .default) { action in
             DispatchQueue.main.async {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url, options: [:])
@@ -202,89 +155,61 @@ class AttachmentHandler: NSObject
     }
 }
 
-
-
-
-
-
-// MARK: - AttachmentHandler Extension
-/// this extension handles the imagePicker delegate functions
-extension AttachmentHandler: UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate
-{
-    // MARK: - Open ImagePicker Functions
-    /// this function opens the PHPicker (only on iOS 14)
+extension AttachmentHandler: UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate {
+    
     @available(iOS 14.0, *)
-    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult])
-    {
+    func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         guard let currentVC = currentVC else { return }
         currentVC.dismiss(animated: true)
 
-        if let itemProvider = results.first?.itemProvider, itemProvider.canLoadObject(ofClass: UIImage.self)
-        {
+        if let itemProvider = results.first?.itemProvider, itemProvider.canLoadObject(ofClass: UIImage.self) {
             itemProvider.loadObject(ofClass: UIImage.self) { [weak self] image, error in
                 DispatchQueue.main.async {
-                    guard let self = self, let image = image as? UIImage else { return }
-                    self.retrievedImage?(image)
+                    guard let self, let image = image as? UIImage else { return }
+                    retrievedImage?(image)
                 }
             }
         }
     }
     
-    /// this function is used to open the camera from the device
-    fileprivate func openCamera()
-    {
+    private func openCamera() {
         if UIImagePickerController.isSourceTypeAvailable(.camera) {
-            guard let currentVC = currentVC else { return }
+            guard let currentVC else { return }
             
-            DispatchQueue.main.async {
-                let myPickerController = self.createImagePicker()
+            DispatchQueue.main.async { [weak self]
+                let myPickerController = createImagePicker()
                 myPickerController.sourceType = .camera
                 currentVC.present(myPickerController, animated: true)
             }
         }
     }
     
-    /// this function is used to open the photoLibrary from the device
-    fileprivate func openPhotoLibrary()
-    {
+    private func openPhotoLibrary() {
         if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
-            guard let currentVC = currentVC else { return }
+            guard let currentVC else { return }
             
-            DispatchQueue.main.async {
-                let myPickerController = self.createImagePicker()
+            DispatchQueue.main.async { [weak self]
+                let myPickerController = createImagePicker()
                 myPickerController.sourceType = .photoLibrary
                 currentVC.present(myPickerController, animated: true)
             }
         }
     }
     
-    /// this function creates the image picker and sets the delegate
-    fileprivate func createImagePicker() -> UIImagePickerController
-    {
+    private func createImagePicker() -> UIImagePickerController {
         let myPickerController = UIImagePickerController()
-        
         myPickerController.delegate = self
         myPickerController.allowsEditing = true
-        
         return myPickerController
     }
     
-    
-    
-    
-    
-    
-    // MARK: - Close ImagePicker Functions (UIImagePickerControllerDelegate)
-    /// this function dissmisses the imagepicker if its cancelled
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         guard let currentVC = currentVC else { return }
         currentVC.dismiss(animated: true)
     }
     
-    /// this function stores the picked image
-    @objc func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any])
-    {
-        guard let currentVC = currentVC else { return }
+    @objc func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        guard let currentVC else { return }
 
         if let image = info[.editedImage] as? UIImage {
             retrievedImage?(image)
